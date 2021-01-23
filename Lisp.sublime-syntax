@@ -1,0 +1,214 @@
+%YAML 1.2
+---
+version: 2
+file_extensions: [lisp, scm, rkt]
+scope: source.lisp
+
+# Baseline definition for arbitrary Lisp dialects. Based on common
+# characteristics shared by most dialects, but not specialized for ANY of them.
+# This file should not contain knowledge of ANY dialect-specific words, not
+# even the most common special forms such as `if`. Those belong in
+# dialect-specific implementations.
+
+variables:
+  comment_start: \;
+
+  # Note: all of these characters may occur in symbols, when enclosed by pipes.
+  # See the corresponding syntax rule.
+  non_sym_chars: \;\|\(\)\[\]\{\}\"\'\,\`\s
+
+  sym_begin: '(?<=^|[{{non_sym_chars}}])'
+  sym_end: '(?=[{{non_sym_chars}}]|$)'
+
+  # Wildly incomplete. Erroneously matches numbers. TODO avoid.
+  sym: '[^{{non_sym_chars}}]+'
+
+  # Lacks support for special sequences such as newlines.
+  char_escape: \\(?:.|\n)
+
+contexts:
+  prototype:
+    - include: match-comment
+
+  main:
+    - include: match-atom
+    - include: match-punctuation
+
+  match-comment:
+    - include: match-line-comment
+
+  match-line-comment:
+    - match: '({{comment_start}}).*(\n|$)'
+      scope: comment.line.lisp
+      captures:
+        1: punctuation.definition.comment.begin.lisp
+
+  match-atom:
+    - include: match-atom-base
+
+  match-atom-base:
+    - include: match-number
+    - include: match-string
+    - include: match-symbol
+
+  # Wildly incomplete!
+  match-number:
+    - include: match-number-dec
+
+  # Wildly incomplete!
+  match-number-dec:
+    - match: '{{sym_begin}}\d+(\.)\d+{{sym_end}}'
+      scope: constant.numeric.decimal.lisp
+      captures:
+        1: punctuation.separator.decimal.lisp
+    - match: '{{sym_begin}}\d+{{sym_end}}'
+      scope: constant.numeric.decimal.lisp
+
+  match-string:
+    - include: match-string-double
+
+  match-string-double:
+    - match: '"'
+      scope: punctuation.definition.string.begin.lisp
+      push: pop-strings-double
+
+  # TODO: not every dialect might be using backslash escapes.
+  pop-strings-double:
+    - meta_include_prototype: false
+    - meta_scope: string.quoted.double.lisp
+    - match: '"'
+      scope: punctuation.definition.string.end.lisp
+      pop: true
+    - match: '{{char_escape}}'
+      scope: constant.character.escape.lisp
+
+  match-punctuation:
+    - include: match-quote-unquote
+    - include: match-parens
+    - include: match-brackets
+    - include: match-braces
+
+  match-quote-unquote:
+    - match: (?:\'|\`|,@|,)
+      scope: keyword.operator.macro.lisp
+
+  match-parens:
+    - match: \(
+      scope: punctuation.section.parens.begin.lisp
+      push: [pop-inside-parens-any, maybe-pop-call]
+    - match: \)
+      scope: punctuation.section.parens.end.lisp invalid.illegal.lisp
+
+  pop-inside-parens-any:
+    - include: pop-inside-parens
+    - include: main
+
+  pop-inside-parens:
+    - meta_scope: meta.parens.lisp
+    - match: \)
+      scope: punctuation.section.parens.end.lisp
+      pop: true
+
+  # Should be overridden by descendant syntaxes.
+  maybe-pop-call:
+    # Disabled by default, left here as an example.
+    # - include: pop-call-function
+    - include: pop-before-nonblank
+
+  # Unused, left as an example. We don't scope function calls by default because
+  # it would produce incredible amounts of false positives.
+  pop-call-function:
+    - match: '{{sym}}'
+      scope: variable.function.lisp
+      pop: true
+    - include: pop-before-nonblank
+
+  match-brackets:
+    - match: \[
+      scope: punctuation.section.brackets.begin.lisp
+      push: pop-inside-brackets-any
+    - match: \]
+      scope: punctuation.section.brackets.end.lisp invalid.illegal.lisp
+
+  pop-inside-brackets-any:
+    - include: pop-inside-brackets
+    - include: main
+
+  pop-inside-brackets:
+    - meta_scope: meta.brackets.lisp
+    - match: \]
+      scope: punctuation.section.brackets.end.lisp
+      pop: true
+
+  match-braces:
+    - match: \{
+      scope: punctuation.section.braces.begin.lisp
+      push: pop-inside-braces-any
+    - match: \}
+      scope: punctuation.section.braces.end.lisp invalid.illegal.lisp
+
+  pop-inside-braces-any:
+    - include: pop-inside-braces
+    - include: main
+
+  pop-inside-braces:
+    - meta_scope: meta.braces.lisp
+    - match: \}
+      scope: punctuation.section.braces.end.lisp
+      pop: true
+
+  match-symbol:
+    - include: match-symbol-base
+
+  match-symbol-base:
+    - include: match-dot
+    - include: match-hashed-symbol
+    - include: match-hash-prefix
+    - include: match-symbol-other
+
+  match-dot:
+    - match: '{{sym_begin}}\.{{sym_end}}'
+      scope: punctuation.separator.pair.lisp
+
+  # Tentative. Many dialects use `#` for various reader macros, but this could
+  # result in false positives in some.
+  match-hashed-symbol:
+    - match: '{{sym_begin}}(#){{sym}}{{sym_end}}'
+      scope: variable.other.lisp
+      captures:
+        1: keyword.operator.macro.lisp
+
+  # Tentative. Many dialects use `#` for various reader macros, but this could
+  # result in false positives in some.
+  match-hash-prefix:
+    - match: '{{sym_begin}}#'
+      scope: keyword.operator.macro.lisp
+
+  # TODO: support piped symbols.
+  match-symbol-other:
+    - match: '{{sym}}'
+      scope: variable.other.lisp
+
+  pop-before-paren:
+    - match: (?=\))
+      pop: true
+
+  pop-before-nonblank:
+    - match: (?=\S)
+      pop: true
+
+  pop-now:
+    - match: ''
+      pop: true
+
+  # Used by both Common Lisp and Scheme. Placed here to avoid duplication. Might
+  # be semantically incorrect in one of them. Should consult the specs. This is
+  # conservatively scoped as `variable.other` rather than `constant` because
+  # whether or not a keyword is considered a constant depends on both the
+  # dialect and the context.
+  match-hash-keyword:
+    - match: '{{sym_begin}}(#)(:){{sym}}{{sym_end}}'
+      scope: variable.other.lisp
+      captures:
+        1: keyword.operator.macro.lisp
+        2: punctuation.definition.constant.keyword.lisp

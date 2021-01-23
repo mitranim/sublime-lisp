@@ -1,0 +1,119 @@
+%YAML 1.2
+---
+version: 2
+extends: Packages/sublime-lisp/Lisp.sublime-syntax
+# TODO: this should probably receive an additional scope, just like
+# `source.lisp source.scheme`, but which?
+scope: source.lisp
+
+variables:
+  # https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/index.html#D
+  def_word: |
+    (?xi)
+    {{sym_begin}}(?:
+      # Standard.
+      defclass
+      |defgeneric
+      |define-compiler-macro
+      |define-condition
+      |define-declaration
+      |define-method-combination
+      |define-modify-macro
+      |define-setf-method
+      |defmacro
+      |defmethod
+      |defpackage
+      |defstruct
+      |deftype
+      |defun
+      |defvar
+      # Not found in the reference above, but found in the hyperspec:
+      # http://www.lispworks.com/documentation/HyperSpec/Body/c_data_a.htm
+      |defconstant
+      |defparameter
+      # Non-standard, for user-defined macros. Tentative. Misfires in the SBCL
+      # code base, but occasional false positives may be an acceptable tradeoff.
+      |def
+      |define
+      |def-[^{{non_sym_chars}}]*
+      |define-[^{{non_sym_chars}}]*
+    )
+    {{sym_end}}
+
+contexts:
+  match-atom:
+    - include: match-character
+    - include: match-atom-base
+
+  # https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node22.html
+  match-character:
+    # Note: the single character following the backslash may be a space!
+    - match: '{{sym_begin}}(?i)(#)(?:(\\)(.)|((\\){{sym}})){{sym_end}}'
+      scope: string.unquoted.character.lisp
+      captures:
+        1: keyword.operator.macro.lisp
+        2: punctuation.definition.string.lisp
+        3: constant.character.literal.lisp
+        4: constant.character.escape.lisp
+        5: punctuation.definition.string.lisp
+
+  maybe-pop-call:
+    - match: '{{sym_begin}}(?i)defun{{sym_end}}'
+      scope: keyword.declaration.function.lisp
+      set: [maybe-pop-params, maybe-pop-name-function]
+    - match: '{{sym_begin}}(?i)defmacro{{sym_end}}'
+      scope: keyword.declaration.macro.lisp
+      set: [maybe-pop-params, maybe-pop-name-macro]
+    - match: '{{def_word}}'
+      scope: keyword.declaration.lisp
+      set: pop-definition
+    - include: pop-before-nonblank
+
+  maybe-pop-name-function:
+    - match: '{{sym}}'
+      scope: entity.name.function.lisp
+      pop: true
+    - include: pop-before-nonblank
+
+  maybe-pop-name-macro:
+    - match: '{{sym}}'
+      scope: entity.name.macro.lisp
+      pop: true
+    - include: pop-before-nonblank
+
+  maybe-pop-params:
+    - match: \(
+      scope: punctuation.section.parens.begin.lisp
+      set: pop-params
+    - include: pop-before-nonblank
+
+  # Current limitation: doesn't support nested lists.
+  pop-params:
+    - include: pop-inside-parens
+    - match: '{{sym_begin}}&(?:{{sym}})?{{sym_end}}'
+      scope: keyword.other.parameters.lisp
+    - match: '{{sym}}'
+      scope: variable.parameter.lisp
+    - include: main
+
+  pop-definition:
+    - match: '{{sym}}'
+      scope: entity.name.lisp
+      pop: true
+    - include: pop-before-nonblank
+
+  match-symbol:
+    - include: match-constant
+    - include: match-hash-keyword
+    - include: match-keyword
+    - include: match-symbol-base
+
+  match-constant:
+    - match: '{{sym_begin}}(?i)(?:t|nil){{sym_end}}'
+      scope: constant.language.lisp
+
+  match-keyword:
+    - match: '{{sym_begin}}(:){{sym}}{{sym_end}}'
+      scope: constant.other.keyword.lisp
+      captures:
+        1: punctuation.definition.constant.keyword.lisp

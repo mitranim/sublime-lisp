@@ -1,0 +1,55 @@
+%YAML 1.2
+---
+version: 2
+extends: Packages/sublime-lisp/Lisp.sublime-syntax
+scope: source.lisp source.scheme
+
+contexts:
+  maybe-pop-call:
+    # Extremely incomplete.
+    - match: '{{sym_begin}}(?:define|define-syntax|define-syntax-rule){{sym_end}}'
+      scope: keyword.declaration.lisp
+      set: maybe-pop-define-subject
+    - include: pop-before-nonblank
+
+  maybe-pop-define-subject:
+    - match: \(
+      scope: punctuation.section.parens.begin.lisp
+      set: pop-function-name-and-params
+    - match: '{{sym}}'
+      scope: entity.name.other.lisp
+      pop: true
+    - include: pop-before-nonblank
+
+  pop-function-name-and-params:
+    - match: '{{sym}}'
+      scope: entity.name.function.lisp
+      set: pop-params
+    - match: ''
+      set: pop-params
+
+  # Current limitation: doesn't support nested lists.
+  pop-params:
+    - include: pop-inside-parens
+    - include: match-dot
+    - match: '{{sym_begin}}(#)(:)({{sym}}){{sym_end}}'
+      scope: variable.parameter.lisp
+      captures:
+        1: keyword.operator.macro.lisp
+        2: punctuation.definition.constant.keyword.lisp
+    - match: '{{sym}}'
+      scope: variable.parameter.lisp
+    - include: main
+
+  match-symbol:
+    - include: match-constant
+    - include: match-hash-keyword
+    - include: match-symbol-base
+
+  match-constant:
+    # Some may be non-standard, but supported by common implementations.
+    # For example, Guile supports `#nil`.
+    - match: '{{sym_begin}}(?i)(#)(?:t|f|true|false|nil){{sym_end}}'
+      scope: constant.language.lisp
+      captures:
+        1: keyword.operator.macro.lisp

@@ -57,12 +57,15 @@ contexts:
 
   # Wildly incomplete!
   match-number-dec:
-    - match: '{{sym_begin}}\d+(\.)\d+{{sym_end}}'
+    - match: '{{sym_begin}}([+-])\d+(\.)\d+{{sym_end}}'
       scope: constant.numeric.decimal.lisp
       captures:
-        1: punctuation.separator.decimal.lisp
-    - match: '{{sym_begin}}\d+{{sym_end}}'
+        1: keyword.operator.arithmetic.lisp
+        2: punctuation.separator.decimal.lisp
+    - match: '{{sym_begin}}([+-])\d+{{sym_end}}'
       scope: constant.numeric.decimal.lisp
+      captures:
+        1: keyword.operator.arithmetic.lisp
 
   match-string:
     - include: match-string-double

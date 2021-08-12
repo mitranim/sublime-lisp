@@ -44,9 +44,6 @@ contexts:
         1: punctuation.definition.comment.begin.lisp
 
   match-atom:
-    - include: match-atom-base
-
-  match-atom-base:
     - include: match-number
     - include: match-string
     - include: match-symbol
@@ -161,9 +158,6 @@ contexts:
       pop: true
 
   match-symbol:
-    - include: match-symbol-base
-
-  match-symbol-base:
     - include: match-dot
     - include: match-hashed-symbol
     - include: match-hash-prefix

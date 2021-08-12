@@ -42,8 +42,8 @@ variables:
 
 contexts:
   match-atom:
+    - meta_prepend: true
     - include: match-character
-    - include: match-atom-base
 
   # https://www.cs.cmu.edu/Groups/AI/html/cltl/clm/node22.html
   match-character:
@@ -58,6 +58,7 @@ contexts:
         5: punctuation.definition.string.lisp
 
   maybe-pop-call:
+    - meta_prepend: true
     - match: '{{sym_begin}}(?i)defun{{sym_end}}'
       scope: keyword.declaration.function.lisp
       set: [maybe-pop-params, maybe-pop-name-function]
@@ -67,7 +68,6 @@ contexts:
     - match: '{{def_word}}'
       scope: keyword.declaration.lisp
       set: pop-definition
-    - include: pop-before-nonblank
 
   maybe-pop-name-function:
     - match: '{{sym}}'
@@ -103,10 +103,10 @@ contexts:
     - include: pop-before-nonblank
 
   match-symbol:
+    - meta_prepend: true
     - include: match-constant
     - include: match-hash-keyword
     - include: match-keyword
-    - include: match-symbol-base
 
   match-constant:
     - match: '{{sym_begin}}(?i)(?:t|nil){{sym_end}}'

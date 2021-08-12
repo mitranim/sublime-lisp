@@ -6,11 +6,11 @@ scope: source.lisp source.scheme
 
 contexts:
   maybe-pop-call:
+    - meta_prepend: true
     # Extremely incomplete.
     - match: '{{sym_begin}}(?:define|define-syntax|define-syntax-rule){{sym_end}}'
       scope: keyword.declaration.lisp
       set: maybe-pop-define-subject
-    - include: pop-before-nonblank
 
   maybe-pop-define-subject:
     - match: \(
@@ -42,9 +42,9 @@ contexts:
     - include: main
 
   match-symbol:
+    - meta_prepend: true
     - include: match-constant
     - include: match-hash-keyword
-    - include: match-symbol-base
 
   match-constant:
     # Some may be non-standard, but supported by common implementations.
